@@ -1,50 +1,32 @@
 {
-  inputs.clan-core.url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
-  inputs.nixpkgs.follows = "clan-core/nixpkgs";
+  inputs = {
+    clan-core.url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
+    nixpkgs.follows = "clan-core/nixpkgs";
+    fmway-lib.url = "github:fmway/lib";
+    fmway-lib.inputs.nixpkgs.follows = "nixpkgs";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+  };
 
   outputs =
     {
       self,
       clan-core,
       nixpkgs,
+      fmway-lib,
       ...
-    }@inputs:
-    let
-      # Usage see: https://docs.clan.lol
-      clan = clan-core.lib.clan {
-        inherit self;
-        imports = [ ./clan.nix ];
-        specialArgs = { inherit inputs; };
-
-        # Customize nixpkgs
-        # pkgsForSystem =
-        #   system:
-        #   import nixpkgs {
-        #     inherit system;
-        #     config = {
-        #       allowUnfree = true;
-        #     };
-        #     overlays = [];
-        #   };
+    }@inputs: fmway-lib.mkFlake {
+      inherit inputs;
+      specialArgs = {
+        lib.clan = clan-core.clanLib;
       };
-    in
+      src = ./.;
+    }
     {
-      inherit (clan.config) nixosConfigurations nixosModules clanInternals;
-      clan = clan.config;
-      # Add the Clan cli tool to the dev shell.
-      # Use "nix develop" to enter the dev shell.
-      devShells =
-        nixpkgs.lib.genAttrs
-          [
-            "x86_64-linux"
-            "aarch64-linux"
-            "aarch64-darwin"
-            "x86_64-darwin"
-          ]
-          (system: {
-            default = clan-core.inputs.nixpkgs.legacyPackages.${system}.mkShell {
-              packages = [ clan-core.packages.${system}.clan-cli ];
-            };
-          });
+      systems = [ "x86_64-linux" "aarch64-linux" ];
+      clan.templates.disko.xfs = {
+        path = ./templates/disk/xfs.nix;
+        description = "Single disk schema with a GPT layout, xfs root filesystem";
+      };
     };
 }
