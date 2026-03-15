@@ -1,7 +1,6 @@
-{ pkgs, ... }:
+{ inputs, pkgs, ... }:
 {
   imports = [
-
   ];
   programs.starship.enable = true;
   environment.systemPackages = with pkgs; [

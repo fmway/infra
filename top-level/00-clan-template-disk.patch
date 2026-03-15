@@ -1,0 +1,31 @@
+diff '--color=auto' -u --recursive a/clan_lib/dirs/__init__.py b/clan_lib/dirs/__init__.py
+--- a/clan_lib/dirs/__init__.py
++++ b/clan_lib/dirs/__init__.py
+@@ -67,7 +67,7 @@
+ 
+ 
+ def clan_templates(template_type: TemplateType | None = None) -> Path:
+-    template_path = module_root().parent.parent.parent / "templates"
++    template_path = Path("@template_dir@")
+ 
+     if template_type is not None:
+         template_path /= template_type.value
+diff '--color=auto' -u --recursive a/clan_lib/templates/disk.py b/clan_lib/templates/disk.py
+--- a/clan_lib/templates/disk.py
++++ b/clan_lib/templates/disk.py
+@@ -99,6 +99,14 @@
+             required=True,
+         ),
+     },
++    "xfs": {
++        # Placeholders
++        "mainDisk": lambda hw_report: Placeholder(
++            label="Main disk",
++            options=hw_main_disk_options(hw_report),
++            required=True
++        ),
++    },
+ }
+ 
+ 
+

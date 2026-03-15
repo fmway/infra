@@ -18,14 +18,19 @@
     }@inputs: fmway-lib.mkFlake {
       inherit inputs;
       specialArgs = {
-        lib.clan = clan-core.clanLib;
+        lib = [
+          clan-core.inputs.nix-select.lib
+          {
+            clan = clan-core.clanLib;
+          }
+        ];
       };
       src = ./.;
     }
     {
       systems = [ "x86_64-linux" "aarch64-linux" ];
       clan.templates.disko.xfs = {
-        path = ./templates/disk/xfs.nix;
+        path = ./templates/disk/xfs/default.nix;
         description = "Single disk schema with a GPT layout, xfs root filesystem";
       };
     };
