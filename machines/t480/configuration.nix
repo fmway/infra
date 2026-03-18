@@ -3,5 +3,5 @@
 
   ];
 
-  # New machine!
+  clan.core.settings.state-version.enable = false;
 }

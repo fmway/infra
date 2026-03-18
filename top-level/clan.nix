@@ -1,36 +1,37 @@
 { config, lib, inputs, ... }:
 {
-  imports = [
-    inputs.clan-core.flakeModules.default
-    # TODO: autoRenamed from flake.clanModules to clan.modules;
-    ({ config, ... }: {
-      clan.modules = lib.filterAttrs (k: _: !builtins.any (x: k == x) [ "all" "within" "without" ]) config.flake.clanModules or {};
-    })
-  ];
+  # use `lib.fix` instead of `rec` keyword for recursive attrs. we can't use `config.clan` bcz clan has a special merge in inventory settings
   clan = lib.fix (s: {
     self = inputs.self;
     specialArgs = config._module.specialArgs;
-    # Ensure this is unique among all clans you want to use.
     meta.name = "fclan";
     meta.domain = "clan.fmway.me";
 
     inventory.machines = {
-      opc1.tags = [ "network-controller" ];
+      /*
+        # TAGS
+        - `online` -> the devices expected as a server
+        - `local` -> local machines, the opposite of `online` (laptop/pc/etc)
+        - `network-controller` -> the global server to routing all devices (zerotier, dns, etc)
+       */
+      opc1 = {
+        tags = [ "network-controller" "online" ];
+        deploy.targetHost = "161.118.224.161";
+      };
+
+      t480 = {
+        tags = [ "local" ];
+        deploy.targetHost = "localhost";
+      };
     };
 
-    inventory.instances = builtins.mapAttrs (x: value: let
-      name = value.module.name or x;
-    in value // {
-      module = value.module or {} // {
-        input =
-          if config.clan.modules ? ${name} then
-            "self"
-          else
-            "clan-core";
-      };
-    }) {
+    inventory.instances = lib.clan.autoChooseModule {
+      # internet = {};
       zerotier = {
         roles.controller.tags.network-controller = { };
+        roles.controller.settings.allowedIps = [
+          "fd00:ee1e:cd28:dad3:9599:938c:c033:ffac"
+        ];
         roles.peer.tags.all = { };
       };
 
@@ -46,7 +47,7 @@
 
       "user@nixos" = {
         module.name = "users";
-        roles.default.tags.all = {};
+        roles.default.tags.online = {};
         roles.default.settings = {
           user = "user";
           openssh.authorizedKeys = builtins.attrValues (s.inventory.instances.sshd.roles.server.settings.authorizedKeys or {});
@@ -57,7 +58,7 @@
 
       "root@nixos" = {
         module.name = "users";
-        roles.default.tags.all = {};
+        roles.default.tags.online = {};
         roles.default.settings = {
           user = "root";
           share = true;
@@ -65,7 +66,7 @@
       };
 
       importer = {
-        roles.default.tags.all = {};
+        roles.default.tags.online = {};
         roles.default.extraModules = [
           inputs.self.nixosModules.all
         ];
@@ -73,12 +74,23 @@
 
       clan-cache = {
         module.name = "trusted-nix-caches";
-        roles.default.tags.all = { };
+        roles.default.tags.online = { };
       };
     };
 
-    machines = {
-      
-    };
+    machines = builtins.mapAttrs (k: v:
+      # all local machines need to explicit update
+      lib.optionalAttrs (builtins.elem "local" v.tags) {
+        clan.deployment.requireExplicitUpdate = true;
+      }
+    ) s.inventory.machines;
   });
+
+  imports = [
+    inputs.clan-core.flakeModules.default
+    # TODO: autoRenamed from flake.clanModules to clan.modules;
+    ({ config, ... }: {
+      clan.modules = lib.filterAttrs (k: _: !builtins.any (x: k == x) [ "all" "within" "without" ]) config.flake.clanModules or {};
+    })
+  ];
 }
