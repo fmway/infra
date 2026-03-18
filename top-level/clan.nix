@@ -29,9 +29,6 @@
       # internet = {};
       zerotier = {
         roles.controller.tags.network-controller = { };
-        roles.controller.settings.allowedIps = [
-          "fd00:ee1e:cd28:dad3:9599:938c:c033:ffac"
-        ];
         roles.peer.tags.all = { };
       };
 
