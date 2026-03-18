@@ -42,7 +42,7 @@
         };
       };
 
-      "user@nixos" = {
+      "user@server" = {
         module.name = "users";
         roles.default.tags.online = {};
         roles.default.settings = {
@@ -53,7 +53,7 @@
         };
       };
 
-      "root@nixos" = {
+      "root@server" = {
         module.name = "users";
         roles.default.tags.online = {};
         roles.default.settings = {
@@ -67,6 +67,11 @@
         roles.default.extraModules = [
           inputs.self.nixosModules.all
         ];
+      };
+
+      nix-token = {
+        roles.default.tags.all = {};
+        roles.default.settings.share = true;
       };
 
       clan-cache = {
