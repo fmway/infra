@@ -26,7 +26,7 @@
     };
 
     inventory.instances = lib.clan.autoChooseModule {
-      # internet = {};
+      internet = { };
       zerotier = {
         roles.controller.tags.network-controller = { };
         roles.peer.tags.all = { };
@@ -83,7 +83,7 @@
     machines = builtins.mapAttrs (k: v:
       # all local machines need to explicit update
       lib.optionalAttrs (builtins.elem "local" v.tags) {
-        clan.deployment.requireExplicitUpdate = true;
+        clan.core.deployment.requireExplicitUpdate = true;
       }
     ) s.inventory.machines;
   });
