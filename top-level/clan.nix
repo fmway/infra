@@ -69,6 +69,32 @@
         ];
       };
 
+      /*
+        connection between machines over zerotier, per-machine can connect to other with domain <machine>.zt and <machine>.<domain>
+       */
+      domains = {
+        module.name = "importer";
+        roles.default.tags = s.inventory.instances.zerotier.roles.peer.tags;
+        roles.default.extraModules = [
+          ({ config, inputs, ... }:
+          {
+            networking.hosts = {
+              "127.0.0.1" = [ "${config.clan.core.machineName}.zt" ];
+            } // lib.mapAttrs' (k: v: let
+              info = lib.clan.parseScope k;
+            in {
+              name = (builtins.head v.peer.hosts).plain;
+              value = [ "${info.machineName}.zt" "${info.machineName}.${config.networking.domain}" ];
+            }) (
+              lib.clan.selectExports ({ machineName, serviceName, ... }:
+                builtins.all (x: machineName != x) [config.clan.core.machineName ""] &&
+                serviceName == "clan-core/zerotier"
+              ) inputs.self.clan.exports
+            );
+          })
+        ];
+      };
+
       nix-token = {
         roles.default.tags.all = {};
         roles.default.settings.share = true;
@@ -93,6 +119,14 @@
     # TODO: autoRenamed from flake.clanModules to clan.modules;
     ({ config, ... }: {
       clan.modules = lib.filterAttrs (k: _: !builtins.any (x: k == x) [ "all" "within" "without" ]) config.flake.clanModules or {};
+    })
+    ({ lib, ... }: {
+      config = lib.mkIf (lib.pathIsDirectory ../modules/clan/exports) {
+        clan.exportInterfaces = lib.mapAttrs' (file: _: {
+          name = lib.removeSuffix ".nix" file;
+          value = ../modules/clan/exports + "/${file}";
+        }) (builtins.readDir ../modules/clan/exports);
+      };
     })
   ];
 }
