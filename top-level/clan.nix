@@ -30,6 +30,30 @@
       zerotier = {
         roles.controller.tags.network-controller = { };
         roles.peer.tags.all = { };
+        /*
+          connection between machines over zerotier, per-machine can connect to other with domain <machine>.zt and <machine>.<domain>
+        */
+        roles.peer.extraModules = [
+          ({ config, ... }: let
+            machineName = config.clan.core.settings.machine.name;
+          in {
+            networking.hosts = lib.mapAttrs' (k: v: let
+              info = lib.clan.parseScope k;
+            in {
+              name =
+                if info.machineName == machineName then
+                  "127.0.0.1"
+                else
+                  (builtins.head v.peer.hosts).plain;
+              value = [ "${info.machineName}.zt" "${info.machineName}.${config.networking.domain}" ];
+            }) (
+              lib.clan.selectExports ({ machineName, serviceName, ... }:
+                machineName != "" &&
+                serviceName == "clan-core/zerotier"
+              ) config.clanConfig.exports
+            );
+          })
+        ];
       };
 
       sshd = {
@@ -66,32 +90,6 @@
         roles.default.tags.online = {};
         roles.default.extraModules = [
           inputs.self.nixosModules.all
-        ];
-      };
-
-      /*
-        connection between machines over zerotier, per-machine can connect to other with domain <machine>.zt and <machine>.<domain>
-       */
-      domains = {
-        module.name = "importer";
-        roles.default.tags = s.inventory.instances.zerotier.roles.peer.tags;
-        roles.default.extraModules = [
-          ({ config, inputs, ... }:
-          {
-            networking.hosts = {
-              "127.0.0.1" = [ "${config.clan.core.machineName}.zt" ];
-            } // lib.mapAttrs' (k: v: let
-              info = lib.clan.parseScope k;
-            in {
-              name = (builtins.head v.peer.hosts).plain;
-              value = [ "${info.machineName}.zt" "${info.machineName}.${config.networking.domain}" ];
-            }) (
-              lib.clan.selectExports ({ machineName, serviceName, ... }:
-                builtins.all (x: machineName != x) [config.clan.core.machineName ""] &&
-                serviceName == "clan-core/zerotier"
-              ) inputs.self.clan.exports
-            );
-          })
         ];
       };
 
