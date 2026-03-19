@@ -14,19 +14,13 @@
         - `local` -> local machines, the opposite of `online` (laptop/pc/etc)
         - `network-controller` -> the global server to routing all devices (zerotier, dns, etc)
        */
-      opc1 = {
-        tags = [ "network-controller" "online" ];
-        deploy.targetHost = "161.118.224.161";
-      };
+      opc1.tags = [ "network-controller" "online" ];
 
-      t480 = {
-        tags = [ "local" ];
-        deploy.targetHost = "localhost";
-      };
+      t480.tags = [ "local" ];
     };
 
     inventory.instances = lib.clan.autoChooseModule {
-      internet = { };
+      # internet = { };
       zerotier = {
         roles.controller.tags.network-controller = { };
         roles.peer.tags.all = { };
@@ -36,22 +30,21 @@
         roles.peer.extraModules = [
           ({ config, ... }: let
             machineName = config.clan.core.settings.machine.name;
+            filter-zerotier = lib.clan.selectExports ({ machineName, serviceName, ... }:
+              machineName != "" &&
+              serviceName == "clan-core/zerotier"
+            ) config.clanConfig.exports;
+            tld = config.networking.domain;
+            localhost = {
+              "127.0.0.1" = [ "${machineName}.zt" "${machineName}.${tld}" ];
+              "::1" = localhost."127.0.0.1";
+            };
           in {
-            networking.hosts = lib.mapAttrs' (k: v: let
+            networking.hosts = lib.mkMerge ([localhost] ++ lib.mapAttrsToList (k: v: let
               info = lib.clan.parseScope k;
             in {
-              name =
-                if info.machineName == machineName then
-                  "127.0.0.1"
-                else
-                  (builtins.head v.peer.hosts).plain;
-              value = [ "${info.machineName}.zt" "${info.machineName}.${config.networking.domain}" ];
-            }) (
-              lib.clan.selectExports ({ machineName, serviceName, ... }:
-                machineName != "" &&
-                serviceName == "clan-core/zerotier"
-              ) config.clanConfig.exports
-            );
+              "${(builtins.head v.peer.hosts).plain}" = [ "${info.machineName}.zt" "${info.machineName}.${tld}" ];
+            }) filter-zerotier);
           })
         ];
       };
