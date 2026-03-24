@@ -1,4 +1,4 @@
-{ internal, super, inputs, ... }: let
+{ internal, super, inputs, lib, ... }: let
   list-inputs = builtins.attrNames inputs;
 
   # self and clan-core as priority, the rest sorted by alphanumeric
@@ -18,6 +18,30 @@
       else
         input
     ) null sortedInputs;
+
+  overridePerInstance = old: new: { settings, machine, instanceName, roles, mkExports, ... } @ a: let
+    args = a // { inherit settings machine instanceName roles mkExports; };
+    newPerInstance'= new.perInstance or {};
+    oldPerInstance'= old.perInstance or {};
+    oldPerInstance = if builtins.isFunction oldPerInstance' then oldPerInstance' args else oldPerInstance';
+    newPerInstance = if builtins.isFunction newPerInstance' then newPerInstance' args else newPerInstance';
+  in lib.optionalAttrs (oldPerInstance?exports || newPerInstance?exports) {
+    exports = lib.recursiveUpdate (oldPerInstance.exports or {}) (newPerInstance.exports or {});
+  } // lib.optionalAttrs (oldPerInstance?nixosModule || newPerInstance?nixosModule) {
+    nixosModule = { ... }: {
+      imports =
+        lib.optional (oldPerInstance?nixosModule) oldPerInstance.nixosModule
+      ++lib.optional (newPerInstance?nixosModule) newPerInstance.nixosModule
+      ;
+    };
+  } // lib.optionalAttrs (oldPerInstance?darwinModule || newPerInstance?darwinModule) {
+    darwinModule = { ... }: {
+      imports =
+        lib.optional (oldPerInstance?darwinModule) oldPerInstance.darwinModule
+      ++lib.optional (newPerInstance?darwinModule) newPerInstance.darwinModule
+      ;
+    };
+  };
 in super.clan // {
   autoChooseModule = builtins.mapAttrs (x: value: let
       name = value.module.name or x;
@@ -26,4 +50,41 @@ in super.clan // {
         input = chooseInputByName name;
       };
     });
+
+  extendService = path: new: let
+    old-module = import path;
+    fixOldModule = if builtins.isFunction old-module then old-module else _: old-module;
+    fixNewModule = if builtins.isFunction new then new else _: new;
+  in { directory, clanLib, exports, config, ... } @ a: let
+    input = a // { inherit directory clanLib config exports; };
+    oldAttrs = fixOldModule input;
+    newAttrs = fixNewModule input;
+  in lib.optionalAttrs (newAttrs?exports || oldAttrs?exports) {
+    exports = oldAttrs.exports or {} // newAttrs.exports or {};
+  } // lib.optionalAttrs (newAttrs?perInstance || oldAttrs?perInstance) {
+    perInstance = overridePerInstance oldAttrs newAttrs;
+  } // {
+    _class = "clan.service";
+    manifest = oldAttrs.manifest or {} // builtins.mapAttrs (k: v:
+      if k == "exports" then {
+        inputs = oldAttrs.manifest.exports.inputs or [] ++ newAttrs.manifest.exports.inputs or [];
+        out  = oldAttrs.manifest.exports.out or [] ++ newAttrs.manifest.exports.out or [];
+      }
+      else if k == "categories" then
+        oldAttrs.manifest.categories or [] ++ newAttrs.manifest.categories or []
+      else v
+    ) (newAttrs.manifest or {});
+
+    roles = newAttrs.roles or {} // builtins.mapAttrs (k: oldRole: let newRole = newAttrs.roles.${k} or {}; in {
+      description = newRole.description or oldRole.description or "";
+      interface = { ... }: {
+        imports =
+          lib.optional (oldRole?interface) oldRole.interface
+        ++lib.optional (newRole?interface) newRole.interface
+        ;
+      };
+
+      perInstance = overridePerInstance oldRole newRole;
+    }) oldAttrs.roles;
+  };
 }

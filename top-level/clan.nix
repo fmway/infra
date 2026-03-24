@@ -22,31 +22,13 @@
     inventory.instances = lib.clan.autoChooseModule {
       # internet = { };
       zerotier = {
-        roles.controller.tags.network-controller = { };
+        roles.controller = {
+          settings.extraDevices = {
+            xiao = ["fd00:ee1e:cd28:dad3:9599:937e:ac9:5c2c"];
+          };
+          tags.network-controller = { };
+        };
         roles.peer.tags.all = { };
-        /*
-          connection between machines over zerotier, per-machine can connect to other with domain <machine>.zt and <machine>.<domain>
-        */
-        roles.peer.extraModules = [
-          ({ config, ... }: let
-            machineName = config.clan.core.settings.machine.name;
-            filter-zerotier = lib.clan.selectExports ({ machineName, serviceName, ... }:
-              machineName != "" &&
-              serviceName == "clan-core/zerotier"
-            ) config.clanConfig.exports;
-            tld = config.networking.domain;
-            localhost = {
-              "127.0.0.1" = [ "${machineName}.zt" "${machineName}.${tld}" ];
-              "::1" = localhost."127.0.0.1";
-            };
-          in {
-            networking.hosts = lib.mkMerge ([localhost] ++ lib.mapAttrsToList (k: v: let
-              info = lib.clan.parseScope k;
-            in {
-              "${(builtins.head v.peer.hosts).plain}" = [ "${info.machineName}.zt" "${info.machineName}.${tld}" ];
-            }) filter-zerotier);
-          })
-        ];
       };
 
       sshd = {
@@ -64,7 +46,7 @@
         roles.default.tags.online = {};
         roles.default.settings = {
           user = "user";
-          openssh.authorizedKeys = builtins.attrValues (s.inventory.instances.sshd.roles.server.settings.authorizedKeys or {});
+          openssh.authorizedKeys.keys = builtins.attrValues (s.inventory.instances.sshd.roles.server.settings.authorizedKeys or {});
           groups = [ "users" "networkmanager" "wheel" ];
           share = true;
         };
