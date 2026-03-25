@@ -1,82 +1,43 @@
 { internal, lib, inputs, ... }:
 lib.clan.extendService inputs.clan-core.clan.modules.zerotier
 ({ exports, config, ... }: let
-  filter-zerotier = lib.clan.selectExports ({ machineName, serviceName, roleName, ... }:
-    machineName != "" &&
-    roleName == "peer" &&
-    serviceName == manifest.name
-  ) exports;
-
+  # we assume instance and controller machine is only one
   manifest = config.manifest;
+  instanceName = builtins.elemAt (builtins.attrNames config.instances) 0;
+  instance = config.instances.${instanceName};
+  machines = instance.roles.controller.machines;
+  firstMachine = machines.${builtins.elemAt (builtins.attrNames machines) 0};
+  extraDevices = firstMachine.finalSettings.config.extraDevices;
+  peerMachineList = builtins.attrNames instance.roles.peer.machines;
 in {
   _class = "clan.service";
-  manifest.name = "@extra/zerotier";
+  manifest.name = lib.mkForce "@extra/zerotier";
   # manifest.exports.inputs = [ "networking" ];
-  manifest.exports.out = [ "zerotier" ];
+
+
+  # add extraDevices to peer interface
+  exports = lib.mkMerge (map (machineName: lib.mkIf (extraDevices != {}) {
+    ${lib.clan.buildScopeKey {
+      inherit instanceName machineName;
+      serviceName = manifest.name;
+      roleName = "peer";
+    }}.peer.hosts = map (plain: { inherit plain; }) extraDevices.${machineName};
+  }) (builtins.attrNames extraDevices));
 
   roles.controller = {
     interface = { lib, config, ... }:
     {
-      # FIXME: disallow duplicated name with instances
       options.extraDevices = lib.mkOption {
         type = with lib.types; attrsOf (listOf str);
+        apply = value: let
+          deviceList = builtins.attrNames value;
+          _check = builtins.any (x: let r = builtins.elem x peerMachineList; in lib.throwIf r "Duplicated extraDevices `${x}` with clan machines" r) deviceList;
+        in if _check then value else value;
         default = {};
         description = "Devices that not managed by clan";
       };
 
       config.allowedIps = lib.flatten (lib.attrValues config.extraDevices);
-    };
-
-    perInstance = { mkExports, settings, ... }:
-    {
-      exports = mkExports {
-        zerotier.devices = lib.mapAttrs' (k: v: let
-          info = lib.clan.parseScope k;
-        in {
-          name = info.machineName;
-          value = [ (builtins.head v.peer.hosts).plain ];
-        }) filter-zerotier // settings.extraDevices;
-      };
-    };
-  };
-
-  roles.peer = {
-    perInstance = { machine, instanceName, ... }:
-    {
-      nixosModule = { config, ... }: let
-        domain = config.clan.core.settings.domain;
-        zerotier = (builtins.head (
-          builtins.attrValues (
-            lib.clan.selectExports ({ serviceName, roleName, ... } @ x:
-              roleName == "controller" &&
-              serviceName == manifest.name &&
-              x.instanceName == instanceName
-            ) exports
-          )
-        )).zerotier;
-      in {
-        imports = [
-          ({ ... }: {
-            # loopback
-            networking = rec {
-              hosts = {
-                "127.0.0.1" = [ "${machine.name}.zt" "${machine.name}.${domain}" ];
-                "::1" = hosts."127.0.0.1";
-              };
-            };
-          })
-        ];
-
-        # connection between machines over zerotier, per-machine can connect to other with domain <machine>.zt and <machine>.<domain>
-        networking.hosts =
-          builtins.mapAttrs (_: list: lib.flatten (map (x: [ "${x.name}.zt" "${x.name}.${domain}" ]) list)) (
-            builtins.groupBy (x: x.value) (
-              builtins.concatMap
-                (name: map (value: { inherit name value; }) zerotier.devices.${name})
-                (builtins.attrNames zerotier.devices)
-            )
-          );
-      };
     };
   };
 })

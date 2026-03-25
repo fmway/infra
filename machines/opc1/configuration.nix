@@ -1,4 +1,4 @@
-{ inputs, pkgs, ... }:
+{ inputs, config, pkgs, ... }:
 {
   imports = [
   ];
@@ -32,4 +32,9 @@
     ];
   };
   users.users.user.shell = pkgs.fish;
+
+  # TODO: adguardhome as clan service
+  services.adguardhome.enable = true;
+
+  networking.firewall.interfaces."zt+".allowedTCPPorts = [ config.services.adguardhome.port ];
 }
