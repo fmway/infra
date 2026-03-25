@@ -7,6 +7,7 @@
     git
     wget
     curl
+    btop
   ];
 
   programs.fish.enable = true;
