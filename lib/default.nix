@@ -1,5 +1,7 @@
 { lib, ... }:
 {
+  isDomainInclude = inc: domain:
+    !isNull (builtins.match "^([*][.])?(.+[.])?${lib.fmway.fixedInMatch inc}$" domain);
   get_memory = report:
     if isNull report || report.hardware.memory or [] == [] then null else
     builtins.foldl' builtins.add 0

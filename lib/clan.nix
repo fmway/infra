@@ -79,4 +79,11 @@ in super.clan // {
       perInstance = overridePerInstance oldRole newRole;
     }) oldAttrs.roles;
   };
+
+  mapFilterExports = fn: filter: exports:
+    lib.mapAttrs' (k: let info = lib.clan.parseScope k; in fn (info // { _orig = k; })) (lib.filterAttrs filter exports);
+
+  mapIntoListsFilterExports = fn: filter: exports: let
+    filtered = lib.filterAttrs filter exports;
+  in map (k: let info = lib.clan.parseScope k; in fn (info // { _orig = k; }) filtered.${k}) (builtins.attrNames filtered);
 }
