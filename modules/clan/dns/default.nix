@@ -116,12 +116,12 @@ in {
       {
         # connection between machines over zerotier, per-machine can connect to other with domain <machine>.zt and <machine>.<domain>
         networking.hosts = peerMaps;
-        networking.nameservers = lib.mkBefore [
-          "${ip}#${serverSettings.hostname}"
-        ];
-        services.resolved.settings.Resolve.FallbackDNS = [
-          "9.9.9.9"
-        ];
+        # networking.nameservers = lib.mkBefore [
+        #   "${ip}#${serverSettings.hostname}"
+        # ];
+        # services.resolved.settings.Resolve.FallbackDNS = [
+        #   "9.9.9.9"
+        # ];
       };
     };
   };
