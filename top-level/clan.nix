@@ -27,14 +27,64 @@
             xiao = ["fd00:ee1e:cd28:dad3:9599:937e:ac9:5c2c"];
           };
           tags.network-controller = { };
+          extraModules = [
+            ({ config, ... }: {
+              config.clan.core.networking.zerotier.settings.dns = {
+                domain = "dns.fmway.me";
+                servers = [ config.clan.core.vars.generators.zerotier.files.zerotier-ip.value ];
+              };
+            })
+          ];
         };
         roles.peer.tags.all = { };
         roles.moon.machines.opc1.settings.stableEndpoints = [ "161.118.224.161" ];
       };
 
-      dns.roles.default = {
-        tags.all = { };
-        settings.alts = [ "clan" "zt" ];
+      dns = {
+        roles.server.machines.opc1 = {};
+        roles.server.settings = {
+          hostname = "dns.fmway.me";
+          dnsPort = 5335;
+          alt.privates = [ "clan" "zt" ];
+
+          # TODO
+          # alt.publics = [
+          #   { domains = [ "fmway.me" ]; provider = "cloudflare"; }
+          # ];
+        };
+        roles.default.tags.all = { };
+        roles.default.extraModules = [
+          (lib.modules.importApply ./extra/dns.nix { inherit lib; })
+        ];
+      };
+
+      # TODO: dns + dyndns
+      dyndns = {
+        roles.default.machines.opc1 = {};
+        roles.default.settings = {
+          server = {
+            enable = true;
+            domain = "dyndns.clan";
+            acmeEmail = "fm18lv@gmail.com";
+          };
+          period = 15;
+          settings = {
+            "fmway" = {
+              provider = "cloudflare";
+              domain = "fmway.me";
+              secret_field_name = "token";
+
+              extraSettings = {
+                host = "dns,*.dns,git"; # TODO: autodetect by exports (dns + dyndns)
+                ttl = 1;
+                zone_identifier = "ec3141584414b7a28efcbbc0bc913e75";
+              };
+            };
+          };
+        };
+        roles.default.extraModules = [
+          (lib.modules.importApply ./extra/dyndns.nix s)
+        ];
       };
 
       sshd = {
@@ -88,35 +138,7 @@
         module.name = "importer";
         roles.default.tags.nixos = {};
         roles.default.extraModules = [
-          ({ lib, config, ... }: let
-            filterOnlyHasFirewall = builtins.attrValues (lib.filterAttrs (k: v: let
-              info = lib.clan.parseScope k;
-              machineName = config.clan.core.settings.machine.name;
-            in info.machineName == machineName && v ? firewall) config.clanConfig.exports);
-
-            openPorts = lib.flatten (map (x: x.firewall.openPorts) filterOnlyHasFirewall);
-
-            allowPorts = map ({ ports, interfaces, protocol }: let
-              value = lib.foldl' (a: c: let
-                t = if c ? start && c ? end then "Range" else "";
-                p = { udp = -1; tcp-udp = 0; udp-tcp = 0; tcp = 1; }.${protocol};
-              in a // {
-                "allowedUDPPort${t}s" = a."allowedUDPPort${t}s" ++ lib.optional (p <= 0) c;
-                "allowedTCPPort${t}s" = a."allowedTCPPort${t}s" ++ lib.optional (p >= 0) c;
-              }) { allowedUDPPorts = []; allowedTCPPorts = []; allowedUDPPortRanges = []; allowedTCPPortRanges = []; } ports;
-            in if isNull interfaces then
-              value
-            else {
-              interfaces = builtins.listToAttrs (map (name: {
-                inherit name value;
-              }) interfaces);
-            }) openPorts;
-
-          in {
-            config = lib.mkIf (openPorts != []) {
-              networking.firewall = lib.mkMerge allowPorts;
-            };
-          })
+          ./extra/firewall.nix
         ];
       };
 
@@ -144,6 +166,9 @@
     # TODO: autoRenamed from flake.clanModules to clan.modules;
     ({ config, ... }: {
       clan.modules = lib.filterAttrs (k: _: !builtins.any (x: k == x) [ "all" "within" "without" ]) config.flake.clanModules or {};
+    })
+    ({ lib, ... }: {
+      clan.exportInterfaces.peer.options.controller = lib.mkEnableOption "is controller or not";
     })
     # export types related
     ({ lib, ... }: {

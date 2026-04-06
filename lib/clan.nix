@@ -42,6 +42,8 @@
       ;
     };
   };
+
+  extractInfo = fn: x: fn (lib.clan.parseScope x // { __toString = _: x; });
 in super.clan // {
   autoChooseModule = builtins.mapAttrs (x: value: let
       name = value.module.name or x;
@@ -81,9 +83,9 @@ in super.clan // {
   };
 
   mapFilterExports = fn: filter: exports:
-    lib.mapAttrs' (k: let info = lib.clan.parseScope k; in fn (info // { _orig = k; })) (lib.filterAttrs filter exports);
+    lib.mapAttrs' (extractInfo fn) (lib.filterAttrs (extractInfo filter) exports);
 
   mapIntoListsFilterExports = fn: filter: exports: let
-    filtered = lib.filterAttrs filter exports;
-  in map (k: let info = lib.clan.parseScope k; in fn (info // { _orig = k; }) filtered.${k}) (builtins.attrNames filtered);
+    filtered = lib.filterAttrs (extractInfo filter) exports;
+  in map (k: extractInfo fn k filtered.${k}) (builtins.attrNames filtered);
 }

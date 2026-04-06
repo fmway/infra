@@ -8,6 +8,10 @@
     wget
     curl
     btop
+    openssl
+    net-tools
+    nmap
+    lsof
   ];
 
   programs.fish.enable = true;
@@ -35,6 +39,4 @@
 
   # TODO: adguardhome as clan service
   services.adguardhome.enable = true;
-
-  networking.firewall.interfaces."zt+".allowedTCPPorts = [ config.services.adguardhome.port ];
 }

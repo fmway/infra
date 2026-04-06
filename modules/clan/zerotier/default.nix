@@ -6,7 +6,8 @@ lib.clan.extendService inputs.clan-core.clan.modules.zerotier
   instanceName = builtins.elemAt (builtins.attrNames config.instances) 0;
   instance = config.instances.${instanceName};
   machines = instance.roles.controller.machines;
-  firstMachine = machines.${builtins.elemAt (builtins.attrNames machines) 0};
+  firstMachineName = builtins.elemAt (builtins.attrNames machines) 0;
+  firstMachine = machines.${firstMachineName};
   extraDevices = firstMachine.finalSettings.config.extraDevices;
   peerMachineList = builtins.attrNames instance.roles.peer.machines;
 in {
@@ -37,7 +38,32 @@ in {
         description = "Devices that not managed by clan";
       };
 
+      # options.settings = lib.mkOption {
+      #   description = "override the network config in /var/lib/zerotier/controller.d/network/$id.json";
+      #   type = lib.types.submodule { freeformType = lib.types.json; };
+      #   default = {};
+      # };
+
       config.allowedIps = lib.flatten (lib.attrValues config.extraDevices);
+    };
+
+    # perSystem = { settings, ... }:
+    # {
+    #   nixosModule = { ... }:
+    #   {
+    #     config = lib.mkIf (settings.settings != {}) {
+    #       clan.core.networking.zerotier.settings = settings.settings;
+    #     };
+    #   };
+    # };
+  };
+
+  roles.peer = {
+    perInstance = { mkExports, machine, ... }:
+    {
+      exports = mkExports {
+        peer.controller = machine.name == firstMachineName;
+      };
     };
   };
 })

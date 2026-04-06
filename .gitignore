@@ -1,2 +1,7 @@
 result
 .direnv/
+
+**/.ignore/
+**/.ignore
+**/.ignore-*/
+**/.ignore-*
