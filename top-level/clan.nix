@@ -31,7 +31,9 @@
             ({ config, ... }: {
               config.clan.core.networking.zerotier.settings.dns = {
                 domain = "dns.fmway.me";
-                servers = [ config.clan.core.vars.generators.zerotier.files.zerotier-ip.value ];
+                servers = [
+                  config.clan.core.vars.generators.zerotier.files.zerotier-ip.value
+                ];
               };
             })
           ];
@@ -75,7 +77,7 @@
               secret_field_name = "token";
 
               extraSettings = {
-                host = "dns,*.dns,git"; # TODO: autodetect by exports (dns + dyndns)
+                host = "dns,*.dns,git,vault"; # TODO: autodetect by exports (dns + dyndns)
                 ttl = 1;
                 zone_identifier = "ec3141584414b7a28efcbbc0bc913e75";
               };
@@ -139,6 +141,15 @@
         roles.default.tags.nixos = {};
         roles.default.extraModules = [
           ./extra/firewall.nix
+        ];
+      };
+
+      vaultwarden = {
+        module.name = "importer";
+        roles.default.machines.opc1 = {};
+        # roles.default.machines.t480 = {};
+        roles.default.extraModules = [
+          (lib.modules.importApply ./extra/vaultwarden.nix s)
         ];
       };
 

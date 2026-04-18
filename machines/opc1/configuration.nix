@@ -8,26 +8,22 @@
     wget
     curl
     btop
-    openssl
     net-tools
-    nmap
-    lsof
   ];
 
   programs.fish.enable = true;
   programs.fish.interactiveShellInit = /* fish */ ''
     printf '\e[5 q'
+    fish_config theme choose ayu-mirage
   '';
 
-  security.sudo.wheelNeedsPassword = false;
   security.doas = {
     enable = true;
     extraRules = [
     {
       groups = [ "users" "wheel" ];
       keepEnv = true;
-      # persist = true;
-      noPass = true;
+      persist = true;
       setEnv = [
         "PATH"
         "NIX_PATH"
@@ -36,7 +32,22 @@
     ];
   };
   users.users.user.shell = pkgs.fish;
+  users.users.root.shell = pkgs.fish;
 
-  # TODO: adguardhome as clan service
-  services.adguardhome.enable = true;
+  systemd.timers.restart-service = {
+    timerConfig = {
+      OnBootSec = "6h";
+      OnUnitActiveSec = "6h";
+      Unit = "restart-service.service";
+    };
+  };
+
+  systemd.services.restart-service = {
+    serviceConfig.Type = "oneshot";
+    script = ''
+      systemctl restart adguardhome.service vaultwarden.service
+    '';
+  };
+
+  # boot.kernel.sysctl."net.ipv6.conf.ens3.disable_ipv6" = 1;
 }
