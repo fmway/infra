@@ -1,6 +1,8 @@
 {
   inputs = {
     clan-core.url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
+    nixpkgs-dev.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz";
+    # clan-core.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.follows = "clan-core/nixpkgs";
     fmway-lib.url = "github:fmway/lib";
     fmway-lib.inputs.nixpkgs.follows = "nixpkgs";
@@ -35,3 +37,4 @@
       };
     };
 }
+
