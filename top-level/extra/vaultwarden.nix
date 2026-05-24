@@ -1,5 +1,5 @@
 s:
-{ config, pkgs, lib, ... }: let
+{ config, pkgs, lib, inputs, ... }: let
   port'= config.services.vaultwarden.config.ROCKET_PORT;
   port = toString port';
   server_name = "vault.fmway.me";
@@ -16,11 +16,12 @@ in {
     '';
   };
   services.vaultwarden = {
+    package = inputs.nixpkgs-dev.legacyPackages.${pkgs.stdenv.hostPlatform.system}.vaultwarden;
     enable = true;
-    dbBackend = "postgresql";
-    environmentFile = [
-      config.clan.core.vars.generators.vaultwarden.files.env.path
-    ];
+    # dbBackend = "postgresql";
+    # environmentFile = [
+    #   config.clan.core.vars.generators.vaultwarden.files.env.path
+    # ];
     config = {
       DOMAIN = "https://${server_name}";
       SIGNUPS_ALLOWED = false;
