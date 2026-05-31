@@ -1,7 +1,5 @@
-{ inputs, config, pkgs, ... }:
+{ pkgs, ... }:
 {
-  imports = [
-  ];
   programs.starship.enable = true;
   environment.systemPackages = with pkgs; [
     git
@@ -9,6 +7,7 @@
     curl
     btop
     net-tools
+    nvd
   ];
 
   programs.fish.enable = true;
