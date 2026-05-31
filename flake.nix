@@ -1,40 +1,39 @@
 {
-  inputs = {
-    clan-core.url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
-    nixpkgs-dev.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz";
-    # clan-core.inputs.nixpkgs.follows = "nixpkgs";
-    nixpkgs.follows = "clan-core/nixpkgs";
-    fmway-lib.url = "github:fmway/lib";
-    fmway-lib.inputs.nixpkgs.follows = "nixpkgs";
-    flake-parts.url = "github:hercules-ci/flake-parts";
-    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
-  };
+  outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; }
+  ({ den, config, ... }: {
+    imports = [
+      inputs.den.flakeModule
+      (inputs.import-tree ./modules)
+    ];
 
-  outputs =
+    # for debug
+    den.hosts.x86_64-linux = builtins.mapAttrs (_: _: {}) den.clan.inventory.machines;
+
+    debug = true;
+    systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+
+    perSystem = { pkgs, system, ... }:
     {
-      self,
-      clan-core,
-      nixpkgs,
-      fmway-lib,
-      ...
-    }@inputs: fmway-lib.mkFlake {
-      inherit inputs;
-      specialArgs = {
-        lib = [
-          clan-core.inputs.nix-select.lib
-          {
-            clan = clan-core.clanLib;
-          }
+      devShells.default = pkgs.mkShell {
+        packages = [
+          inputs.clan-core.packages.${system}.clan-cli
         ];
       };
-      src = ./.;
-    }
-    {
-      systems = [ "x86_64-linux" "aarch64-linux" ];
-      clan.templates.disko.xfs = {
-        path = ./templates/disk/xfs/default.nix;
-        description = "Single disk schema with a GPT layout, xfs root filesystem";
-      };
     };
-}
 
+  });
+
+  inputs = {
+    clan-core = {
+      url = "https://git.clan.lol/clan/clan-core/archive/main.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    den.url = "github:denful/den/main";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+    import-tree.url = "github:denful/import-tree";
+    nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz";
+  };
+}
