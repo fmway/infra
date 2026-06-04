@@ -1,4 +1,4 @@
-{ settings, peerMaps, ip, lib, myLib, ... }:
+{ settings, peerMaps, lib, myLib, ... }:
 { config, pkgs, ... }: let
   cfg = config.services.adguardhome;
 in {
@@ -12,7 +12,6 @@ in {
       dns = rec {
         bind_hosts = [
           "0.0.0.0"
-          # ip
         ];
         port = settings.dnsPort;
         upstream_dns = [
@@ -24,7 +23,16 @@ in {
           "2620:fe::10"
           "2620:fe::fe:10"
         ];
+        # disallow all unregistered clients
+        disallowed_clients = [ "0.0.0.0/0" ];
+        allowed_clients = builtins.attrNames peerMaps;
         fallback_dns = bootstrap_dns;
+
+        trusted_proxies = [
+          "127.0.0.0/8"
+          "::1/128"
+          (myLib.subnet config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value)
+        ];
       };
 
       tls = {
@@ -35,12 +43,6 @@ in {
         port_dnscrypt = 0;
         allow_unencrypted_doh = true;
       };
-
-      trusted_proxies = [
-        "127.0.0.0/8"
-        "::1/128"
-        (myLib.subnet config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value)
-      ];
     };
   };
 

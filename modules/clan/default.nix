@@ -18,7 +18,7 @@
       zerotier = {
         roles.controller = {
           settings.extraDevices = {
-            xiao = ["fd00:ee1e:cd28:dad3:9599:937e:ac9:5c2c"];
+            xiao = ["fd15:a6cd:10e3:f0e0:4099:937e:ac9:5c2c"];
           };
           tags.network-controller = { };
           extraModules = [

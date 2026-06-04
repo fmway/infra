@@ -30,12 +30,6 @@
         )
       );
 
-      ip = builtins.elemAt (lib.flatten (
-        myLib.clan.mapIntoListsFilterExports (_: v:
-          map (x: x.plain) v.peer.hosts
-        ) (_: x: x.peer.hosts or [] != [] && x.peer.controller or false) exports
-      )) 0;
-
     in {
       _class = "clan.service";
       manifest.name = "dns";
@@ -105,7 +99,7 @@
           nixosModule = { lib, ... }:
           {
             imports = [
-              (lib.modules.importApply ./_adguardhome.nix { inherit clients settings instanceName machine mkExports serverSettings exports lib peerMaps ip myLib; })
+              (lib.modules.importApply ./_adguardhome.nix { inherit clients settings instanceName machine mkExports serverSettings exports lib peerMaps myLib; })
             ];
           };
         };
