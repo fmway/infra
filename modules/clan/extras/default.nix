@@ -1,6 +1,6 @@
 { lib, ... }:
 {
-  den.aspects.extras = { myLib, ... }:
+  fclan.extras = { myLib, ... }:
   {
     nixos = { config, ... }: let mem = myLib.get_memory config.hardware.facter.report; in {
       # limit vps for the small vps :(

@@ -10,8 +10,9 @@
     ) report.hardware.memory);
 
   cast = val: let
-    t    = builtins.typeOf val;
-    _num = lib.throwIfNot (builtins.elem t [ "int" "float" ]) "Only supported number" val;
+    val' = if builtins.isString val && !isNull (builtins.match "^[0-9]+(.[0-9]+)?$" val) then builtins.fromJSON val else val;
+    t    = builtins.typeOf val';
+    _num = lib.throwIfNot (builtins.elem t [ "int" "float" ]) "(cast): Only supported number" val';
     r = {
       from_k = 1.0 * _num * 1000;
       from_m = r.from_k * 1000;
@@ -21,7 +22,10 @@
       to_m   = r.to_k / 1000;
       to_g   = r.to_m / 1000;
 
-      str    = if t == "bool" then if val then "true" else "false" else toString val;
+      str    = let
+        r = builtins.toJSON val';
+        m = builtins.match "^([0-9]+)[.][0]+$" r;
+      in if builtins.isString val' then val' else if isNull m then r else builtins.head m;
     };
   in r;
 

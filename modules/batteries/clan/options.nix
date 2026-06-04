@@ -1,9 +1,20 @@
-{ lib, inputs, den, ... }:
-{
+{ lib, inputs, den, ... }: let
+  defaultAspect = { name = "default"; };
+  getAspect = ns: name: optional: let
+    default = if optional then defaultAspect else null;
+  in if isNull ns then
+      den.aspects.${name} or default
+    else
+      den.ful.${ns}.${name} or default;
+in {
   options.den.clan = {
     directory = lib.mkOption {
       type = lib.types.path;
       default = inputs.self.outPath;
+    };
+    namespace = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
     };
     meta = lib.mkOption {
       description = ''
@@ -45,7 +56,7 @@
           };
           aspect = lib.mkOption {
             type = lib.types.raw;
-            default = den.aspects.${name} or null;
+            default = getAspect den.clan.namespace name false;
           };
           roles = lib.mkOption {
             default = { };
@@ -79,7 +90,7 @@
           };
           aspect = lib.mkOption {
             type = lib.types.raw;
-            default = den.aspects.${name};
+            default = getAspect den.clan.namespace name true;
           };
           tags = lib.mkOption {
             type = lib.types.listOf lib.types.str;

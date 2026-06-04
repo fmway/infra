@@ -1,6 +1,6 @@
 { lib, ... }:
 {
-  den.aspects.extras.nixos = { modulesPath, ... }:
+  fclan.extras.nixos = { modulesPath, ... }:
   {
     imports = [
       (modulesPath + "/profiles/qemu-guest.nix")

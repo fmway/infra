@@ -1,5 +1,5 @@
 {
-  den.aspects.extras.nixos = {
+  fclan.extras.nixos = {
     nix.gc = {
       automatic = true;
       options = "--delete-older-than 7d";

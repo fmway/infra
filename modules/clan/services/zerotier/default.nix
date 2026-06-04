@@ -1,8 +1,8 @@
 { lib, inputs, ... }:
 {
-  den.aspects.zerotier = { clanLib, myLib, ... }:
+  fclan.zerotier = { clanLib, ... }:
   {
-    clan = { exports, config, ... }: let
+    clan = { config, ... }: let
       # we assume instance and controller machine is only one
       manifest = config.manifest;
       instanceName = builtins.elemAt (builtins.attrNames config.instances) 0;
@@ -18,10 +18,7 @@
         inputs.clan-core.clan.modules.zerotier
       ];
       manifest.name = lib.mkForce "@extra/zerotier";
-      # manifest.exports.inputs = [ "networking" ];
 
-
-      # add extraDevices to peer interface
       exports = lib.mkMerge (map (machineName: lib.mkIf (extraDevices != {}) {
         ${clanLib.buildScopeKey {
           inherit instanceName machineName;
@@ -43,24 +40,8 @@
             description = "Devices that not managed by clan";
           };
 
-          # options.settings = lib.mkOption {
-          #   description = "override the network config in /var/lib/zerotier/controller.d/network/$id.json";
-          #   type = lib.types.submodule { freeformType = lib.types.json; };
-          #   default = {};
-          # };
-
           config.allowedIps = lib.flatten (lib.attrValues config.extraDevices);
         };
-
-        # perSystem = { settings, ... }:
-        # {
-        #   nixosModule = { ... }:
-        #   {
-        #     config = lib.mkIf (settings.settings != {}) {
-        #       clan.core.networking.zerotier.settings = settings.settings;
-        #     };
-        #   };
-        # };
       };
 
       roles.peer = {

@@ -1,6 +1,6 @@
 # { inputs, ... }:
 {
-  den.aspects.vaultwarden.nixos = { config, pkgs, ... }: let
+  fclan.vaultwarden.nixos = { config, pkgs, ... }: let
     port'= config.services.vaultwarden.config.ROCKET_PORT;
     port = toString port';
     server_name = "vault.fmway.me";

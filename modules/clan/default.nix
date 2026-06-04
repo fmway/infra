@@ -1,12 +1,17 @@
-{ den, lib, inputs, ... }:
-{
+{ den, lib, inputs, ... }: let
+  namespace = "fclan";
+in {
+  imports = [
+    (inputs.den.namespace namespace true)
+  ];
   den.clan = {
 
     # Useful when i just imported the modules without the full flake
     directory = builtins.toPath ../..;
 
-    meta.name = "fclan";
+    meta.name = namespace;
     meta.domain = "clan.fmway.me";
+    namespace = den.clan.meta.name;
 
     inventory.machines = {
       opc1.tags = [ "network-controller" "online" ];
@@ -97,4 +102,7 @@
       };
     };
   };
+
+  # fclan.t480 = {};
+  # fclan.opc1 = {};
 }

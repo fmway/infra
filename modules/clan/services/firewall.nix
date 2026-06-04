@@ -1,5 +1,5 @@
 {
-  den.aspects.firewall = { clanLib, ... }: {
+  fclan.firewall = { clanLib, ... }: {
     nixos = { lib, config, ... }:
     let
       filterOnlyHasFirewall = builtins.attrValues (lib.filterAttrs (k: v: let

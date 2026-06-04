@@ -1,5 +1,5 @@
 {
-  den.aspects.dns = { clanLib, myLib, ... }:
+  fclan.dns = { clanLib, myLib, ... }:
   {
     clan = { exports, lib, config, meta, ... }: let
       instanceName = builtins.elemAt (builtins.attrNames config.instances) 0;

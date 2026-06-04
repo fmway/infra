@@ -1,6 +1,6 @@
 { lib, ... }:
 {
-  den.aspects.dns.nixos = { config, ... }: let
+  fclan.dns.nixos = { config, ... }: let
     getIpController = (
       builtins.elemAt (
         builtins.elemAt (builtins.attrValues (

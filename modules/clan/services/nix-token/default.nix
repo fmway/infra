@@ -1,5 +1,5 @@
 {
-  den.aspects.nix-token.clan = {
+  fclan.nix-token.clan = {
     _class = "clan.service";
     manifest.name = "nix-token";
     manifest.description = "Service module for managing and appending access-tokens in Nix configurations.";

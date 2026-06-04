@@ -1,7 +1,7 @@
 { den, lib, ... }: let
   server_name = den.clan.inventory.instances.dns.roles.server.settings.hostname;
 in {
-  den.aspects.dyndns.nixos = { config, pkgs, ... }: {
+  fclan.dyndns.nixos = { config, pkgs, ... }: {
     config = lib.mkMerge [
       {
         clan.core.vars.generators."dyndns-cloudflare-fmway.me".files."dyndns-cloudflare-fmway.me" = {

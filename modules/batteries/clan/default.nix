@@ -38,8 +38,6 @@ in {
     ];
   };
 
-  den.aspects = builtins.mapAttrs (_: _: {}) den.clan.inventory.machines;
-
   den.schema.host.includes = [
     den.policies.clan-to-nixos
   ];
