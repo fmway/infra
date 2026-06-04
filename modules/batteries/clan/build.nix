@@ -1,12 +1,11 @@
-{ den, lib, inputs, ... }: let
+{ den, lib, inputs, debug ? false, ... }: let
   inherit (inputs.clan-core.lib) clan;
-  inherit (den.lib) aspects;
+  inherit (den.lib) aspects policy resolveEntity;
   instances = den.clan.inventory.instances; 
+  inherit (inputs.clan-core.inputs.nix-select.lib) select;
 
   genModule = entity: let
     clan-service = aspects.resolve "clan" entity.resolved;
-    nixos = aspects.resolve "nixos" entity.resolved;
-    emptyNixos = nixos.imports == [];
     emptyClan  = clan-service.imports == [];
     nullModuleName = isNull entity.module.name;
     nullModuleInput= isNull entity.module.input;
@@ -22,21 +21,39 @@
         input = "self";
       } else entity.module;
   in {
-    inherit metaModule;
-  } // lib.optionalAttrs (hasAspect && !emptyNixos) {
-    extraModules = [ nixos ];
+    metaModule = { input = null; } // metaModule;
   } // lib.optionalAttrs (selfModule && !emptyClan) {
     module = builtins.head (builtins.concatMap (x: x.imports) clan-service.imports);
   };
 
+  services = select "*.instances.*.roles.*.machines.*.finalSettings.config" b.config._services.allServices;
+  aspectExtraModules = { host, ... }:
+  {
+    name = "clan/extraModules";
+    ${host.class}.imports = builtins.concatMap
+      (serviceName: builtins.concatMap
+        (instanceName: builtins.concatMap
+          (roleName: let
+            included =
+              services.${serviceName}.${instanceName}.${roleName} ? ${host.clan.machineName} &&
+              !isNull den.clan.inventory.instances.${instanceName}.aspect;
+            settings = services.${serviceName}.${instanceName}.${roleName}.${host.clan.machineName};
+            entity = resolveEntity "clan-instance" { inherit settings host; role = roleName; };
+            resolved = entity // {
+              includes = entity.includes ++ [ den.clan.inventory.instances.${instanceName}.aspect ];
+            };
+            module = aspects.resolve host.class resolved;
+          in lib.optional included module)
+        (builtins.attrNames services.${serviceName}.${instanceName}))
+      (builtins.attrNames services.${serviceName}))
+    (builtins.attrNames services);
+  };
+
   r = builtins.foldl' (a: c: let
     mod = genModule instances.${c};
-    extraMod.default = instances.${c}.roles.default or {} // {
-      extraModules = instances.${c}.roles.default.extraModules or [] ++ mod.extraModules;
-    };
   in lib.recursiveUpdate a ({
     instances.${c} = {
-      roles = instances.${c}.roles // lib.optionalAttrs (mod ? extraModules) extraMod;
+      roles = instances.${c}.roles;
       module = mod.metaModule;
     };
   } // lib.optionalAttrs (mod ? module) {
@@ -58,11 +75,15 @@
 
   b = clan fleet;
 in {
+  den.schema.host.includes = [
+    aspectExtraModules
+  ];
   flake = {
     clan = b.config;
     clanInternals = b.config.clanInternals;
+  } // lib.optionalAttrs debug {
     _clan = b;
-    _fleet = fleet;
-    _genModule = genModule;
+    fleet = fleet;
+    genModule = genModule;
   };
 }

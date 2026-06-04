@@ -18,7 +18,6 @@ in {
       t480.tags = [ "local" ];
     };
 
-    # TODO: avoid extraModules, inject via aspects with param { tags } for conditional
     inventory.instances = {
       zerotier = {
         roles.controller = {
@@ -26,21 +25,6 @@ in {
             xiao = ["fd15:a6cd:10e3:f0e0:4099:937e:ac9:5c2c"];
           };
           tags.network-controller = { };
-          extraModules = [
-            ({ config, pkgs, ... }: let
-              networkId = config.clan.core.vars.generators."zerotier-network-zerotier".files.network-id.value;
-              dns = builtins.toJSON { domain = "dns.fmway.me"; servers = [ config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value ]; };
-            in {
-              config.systemd.services.zerotierone.serviceConfig.ExecStartPre = lib.mkAfter [
-                "+${pkgs.writeShellScript "custom-dns" ''
-                  TARGET="/var/lib/zerotier-one/controller.d/network/${networkId}.json"
-                  OLD="$(realpath "$TARGET")"
-                  unlink "$TARGET"
-                  ${lib.getExe pkgs.jq} '.dns = ${dns}' < "$OLD" > "$TARGET"
-                ''}"
-              ];
-            })
-          ];
         };
         roles.peer.tags.all = { };
         roles.moon.machines.opc1.settings.stableEndpoints = [ "161.118.224.161" ];
@@ -102,6 +86,25 @@ in {
       };
     };
   };
+
+  fclan.zerotier.includes = [
+    ({ role, settings, ... }: lib.optionalAttrs (role == "controller") {
+      nixos =
+      { config, pkgs, ... }: let
+        networkId = config.clan.core.vars.generators."zerotier-network-zerotier".files.network-id.value;
+        dns = builtins.toJSON { domain = "dns.fmway.me"; servers = [ config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value ]; };
+      in {
+        systemd.services.zerotierone.serviceConfig.ExecStartPre = lib.mkAfter [
+          "+${pkgs.writeShellScript "custom-dns" ''
+            TARGET="/var/lib/zerotier-one/controller.d/network/${networkId}.json"
+            OLD="$(realpath "$TARGET")"
+            unlink "$TARGET"
+            ${lib.getExe pkgs.jq} '.dns = ${dns}' < "$OLD" > "$TARGET"
+          ''}"
+        ];
+      };
+    })
+  ];
 
   # fclan.t480 = {};
   # fclan.opc1 = {};

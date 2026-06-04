@@ -1,8 +1,8 @@
 { lib, inputs, ... }:
 {
-  fclan.zerotier = { clanLib, ... }:
-  {
-    clan = { config, ... }: let
+  # TODO: move to quirks instead of exports
+  fclan.zerotier = {
+    clan = { config, clanLib, ... }: let
       # we assume instance and controller machine is only one
       manifest = config.manifest;
       instanceName = builtins.elemAt (builtins.attrNames config.instances) 0;

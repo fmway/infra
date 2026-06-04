@@ -1,6 +1,6 @@
 {
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; }
-  ({ den, config, ... }: {
+  ({ den, config, lib, fclan, ... }: {
     imports = [
       inputs.den.flakeModule
       (inputs.import-tree ./modules)
@@ -8,6 +8,10 @@
 
     # for debug
     den.hosts.x86_64-linux = builtins.mapAttrs (_: _: {}) den.clan.inventory.machines;
+    flake.lib = lib;
+    flake.den = den;
+    flake.fclan = fclan;
+    _module.args.debug = true;
 
     debug = true;
     systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
