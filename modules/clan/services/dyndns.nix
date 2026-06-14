@@ -1,5 +1,5 @@
-{ den, lib, ... }: let
-  server_name = den.clan.inventory.instances.dns.roles.server.settings.hostname;
+{ config, lib, ... }: let
+  server_name = config.clan.inventory.instances.dns.roles.server.settings.hostname;
 in {
   fclan.dyndns.nixos = { config, pkgs, ... }: {
     config = lib.mkMerge [

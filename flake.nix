@@ -7,7 +7,17 @@
     ];
 
     # for debug
-    den.hosts.x86_64-linux = builtins.mapAttrs (_: _: {}) den.clan.inventory.machines;
+    den.hosts.x86_64-linux = builtins.mapAttrs (_: _: {}) config.clan.inventory.machines;
+    den.schema.clan-machine.includes = [
+      ({ clan-machine, ... }: lib.optionalAttrs (builtins.elem "local" clan-machine.tags) {
+        # FAKE
+        nixos.fileSystems."/" = lib.mkDefault
+          { device = "/dev/sda1";
+          fsType = "ext4";
+        };
+        nixos.boot.loader.grub.device = "/dev/sda2";
+      })
+    ];
     flake.lib = lib;
     flake.den = den;
     flake.fclan = fclan;

@@ -8,6 +8,7 @@
     btop
     net-tools
     nvd
+    sqlite
   ];
 
   programs.fish.enable = true;

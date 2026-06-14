@@ -1,13 +1,85 @@
-{ lib, inputs, den, ... }: let
-  defaultAspect = { name = "default"; };
-  getAspect = ns: name: optional: let
-    default = if optional then defaultAspect else null;
-  in if isNull ns then
-      den.aspects.${name} or default
+{ lib, inputs, den, config, ... }: let
+  inherit (import "${inputs.den}/nix/lib/entities/_types.nix" { inherit lib den; }) resolvedCtxModule;
+  defaultAspect = { name = "<clan:default>"; };
+  ns = config.clan.namespace;
+  getAspect = name:
+    if isNull ns then
+      den.aspects.${name} or defaultAspect
     else
-      den.ful.${ns}.${name} or default;
+      den.ful.${ns}.${name} or defaultAspect;
+  instanceType = den.lib.schema.mkInstanceType den.schema.clan-instance {
+    strict = false;
+    extraModules = [
+      (resolvedCtxModule "clan-instance")
+      ({ config, name, ... }: {
+        config._module.args.instance = config;
+        config._module.args.instanceName = name;
+        options = {
+          module.name = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+          module.input = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+          aspect = lib.mkOption {
+            type = lib.types.raw;
+            default = getAspect name;
+          };
+          roles = lib.mkOption {
+            default = { };
+            type = lib.types.attrsOf (
+              lib.types.submoduleWith {
+                modules = [
+                  (import "${inputs.clan-core}/modules/inventoryClass/role.nix" { } { inherit lib; clanLib = inputs.clan-core.lib // {
+                    types = inputs.clan-core.lib.types // {
+                      uniqueDeferredSerializableModule = lib.types.json;
+                    };
+                  }; })
+                ];
+              }
+            );
+          };
+        };
+      })
+    ];
+  };
+  machineType = den.lib.schema.mkInstanceType den.schema.clan-machine {
+    strict = false;
+    extraModules = [
+      (resolvedCtxModule "clan-machine")
+      ({ config, name, ... }: {
+        config._module.args.machine = config;
+        config._module.args.machineName = name;
+        options = {
+          aspect = lib.mkOption {
+            type = lib.types.raw;
+            default = getAspect name;
+          };
+          tags = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            apply = lib.unique;
+            default = [];
+          };
+          machineClass = lib.mkOption {
+            type = lib.types.enum [ "nixos" "darwin" ];
+            default = "nixos";
+          };
+          deploy.targetHost = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+          deploy.buildHost = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+        };
+      })
+    ];
+  };
 in {
-  options.den.clan = {
+  options.clan = {
     directory = lib.mkOption {
       type = lib.types.path;
       default = inputs.self.outPath;
@@ -34,84 +106,10 @@ in {
     };
 
     inventory.instances = lib.mkOption {
-      default = {};
-      type = lib.types.attrsOf (lib.types.submodule ({ name, config, ... }: {
-        freeformType = lib.types.attrsOf lib.types.anything;
-        imports = [ den.schema.clan-instance ];
-        config._module.args.instance = config;
-        config._module.args.instanceName = name;
-        options = {
-          module.name = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-          };
-          module.input = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-          };
-          name = lib.mkOption {
-            type = lib.types.str;
-            readOnly = true;
-            default = name;
-          };
-          aspect = lib.mkOption {
-            type = lib.types.raw;
-            default = getAspect den.clan.namespace name false;
-          };
-          roles = lib.mkOption {
-            default = { };
-            type = lib.types.attrsOf (
-              lib.types.submodule {
-                imports = [
-                  (import "${inputs.clan-core}/modules/inventoryClass/role.nix" { } { inherit lib; clanLib = inputs.clan-core.lib // {
-                    types = inputs.clan-core.lib.types // {
-                      uniqueDeferredSerializableModule = lib.types.toml;
-                    };
-                  }; })
-                ];
-              }
-            );
-          };
-        };
-      }));
+      type = lib.types.attrsOf instanceType;
     };
-
     inventory.machines = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule ({ config, name, ... }: {
-        freeformType = lib.types.attrsOf lib.types.anything;
-        imports = [ den.schema.clan-machine ];
-        config._module.args.machine = config;
-        config._module.args.machineName = name;
-        options = {
-          name = lib.mkOption {
-            type = lib.types.str;
-            readOnly = true;
-            default = name;
-          };
-          aspect = lib.mkOption {
-            type = lib.types.raw;
-            default = getAspect den.clan.namespace name true;
-          };
-          tags = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            apply = lib.unique;
-            default = [];
-          };
-          machineClass = lib.mkOption {
-            type = lib.types.enum [ "nixos" "darwin" ];
-            default = "nixos";
-          };
-          deploy.targetHost = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-          };
-          deploy.buildHost = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-          };
-        };
-      }));
-      default = {};
+      type = lib.types.attrsOf machineType;
     };
   };
 }

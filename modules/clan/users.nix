@@ -1,7 +1,8 @@
-{ den, lib, ... }:
+{ config, ... }:
 {
-  den.clan.inventory.instances = {
+  clan.inventory.instances = {
     sshd = {
+      module.name = "sshd";
       roles.server.tags.all = { };
       roles.server.settings = {
         authorizedKeys = {
@@ -16,7 +17,7 @@
       roles.default.tags.online = {};
       roles.default.settings = {
         user = "user";
-        openssh.authorizedKeys.keys = builtins.attrValues (den.clan.inventory.instances.sshd.roles.server.settings.authorizedKeys or {});
+        openssh.authorizedKeys.keys = builtins.attrValues (config.clan.inventory.instances.sshd.roles.server.settings.authorizedKeys or {});
         groups = [ "users" "networkmanager" "wheel" ];
         share = true;
       };
@@ -31,11 +32,4 @@
       };
     };
   };
-
-  den.schema.clan-machine.includes = [
-    ({ machine, ... }: lib.optionalAttrs (builtins.elem "local" machine.tags) {
-      nixos.clan.core.deployment.requireExplicitUpdate = true;
-      nixos.clan.core.settings.state-version.enable = false;
-    })
-  ];
 }

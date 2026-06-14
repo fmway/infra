@@ -1,89 +1,109 @@
-{ den, lib, inputs, debug ? false, ... }: let
-  inherit (inputs.clan-core.lib) clan;
-  inherit (den.lib) aspects policy resolveEntity;
-  instances = den.clan.inventory.instances; 
-  inherit (inputs.clan-core.inputs.nix-select.lib) select;
+{ den, config, lib, inputs, ... }: let
+  inherit (den.lib) policy aspects resolveEntity;
+  inherit (den.lib.aspects.fx.handlers) constantHandler;
+  inherit (policy) pipe;
 
-  genModule = entity: let
-    clan-service = aspects.resolve "clan" entity.resolved;
-    emptyClan  = clan-service.imports == [];
-    nullModuleName = isNull entity.module.name;
-    nullModuleInput= isNull entity.module.input;
-    selfModule = hasAspect && nullModuleName;
-    hasAspect  = !isNull entity.aspect;
-    metaModule =
-      if nullModuleName && nullModuleInput && !hasAspect then {
-        name = entity.name;
-      } else if selfModule && emptyClan then {
-        name = "importer";
-      } else if selfModule then {
-        name = entity.name;
-        input = "self";
-      } else entity.module;
-  in {
-    metaModule = { input = null; } // metaModule;
-  } // lib.optionalAttrs (selfModule && !emptyClan) {
-    module = builtins.head (builtins.concatMap (x: x.imports) clan-service.imports);
+  deepMergeList =
+    builtins.zipAttrsWith (_: v: let
+      f = builtins.head v;
+    in
+      if builtins.length v == 1 then
+        f
+      else if builtins.isAttrs f then
+        deepMergeList v
+      else if builtins.isList f then
+        builtins.concatLists v
+      else
+        lib.last v
+    );
+
+  flatModule = module: {
+    imports = builtins.concatMap (x: x.imports or []) (module.imports or []);
   };
 
-  services = select "*.instances.*.roles.*.machines.*.finalSettings.config" b.config._services.allServices;
-  aspectExtraModules = { host, ... }:
+  instanceEntity = include: args: let r = resolveEntity "clan-instance" args; in r // { includes = r.includes ++ [ include ]; };
+
+  normalizeInstance = instance: builtins.mapAttrs (_: role: {
+    settings = role.finalSettings.config;
+    machines = builtins.mapAttrs (_: machine: machine.finalSettings.config) role.machines;
+  }) instance.roles;
+
+  constructModule = instanceName: i: let
+    moduleInput = if isNull i.module.input then "clan-core" else i.module.input;
+    moduleName = i.module.name;
+    clanService = flatModule (aspects.resolve "clan" i.resolved);
+  in
+  { config, ... }: let
+    serviceName = config.manifest.name;
+    instance = normalizeInstance config.instances.${instanceName};
+  in
   {
-    name = "clan/extraModules";
-    ${host.class}.imports = builtins.concatMap
-      (serviceName: builtins.concatMap
-        (instanceName: builtins.concatMap
-          (roleName: let
-            included =
-              services.${serviceName}.${instanceName}.${roleName} ? ${host.clan.machineName} &&
-              !isNull den.clan.inventory.instances.${instanceName}.aspect;
-            settings = services.${serviceName}.${instanceName}.${roleName}.${host.clan.machineName};
-            entity = resolveEntity "clan-instance" { inherit settings host; role = roleName; };
-            resolved = entity // {
-              includes = entity.includes ++ [ den.clan.inventory.instances.${instanceName}.aspect ];
-            };
-            module = aspects.resolve host.class resolved;
-          in lib.optional included module)
-        (builtins.attrNames services.${serviceName}.${instanceName}))
-      (builtins.attrNames services.${serviceName}))
-    (builtins.attrNames services);
+    _module.args = { inherit serviceName instance instanceName; };
+    _class = "clan.service";
+    _file = "clan:instance:${instanceName}, via ${i.aspect.meta.name or "<anon>"}";
+    imports = lib.optionals (!isNull moduleName) [
+      inputs.${moduleInput}.clan.modules.${moduleName} # TODO: auto-resolve by manifest.name
+    ] ++ lib.optionals (isNull moduleName && clanService.imports == []) [
+      inputs.clan-core.clan.modules.importer
+    ] ++ clanService.imports;
+
+    roles = builtins.mapAttrs (roleName: r: let
+      interfaceModule = flatModule (aspects.resolve "interface" aspect);
+      
+      defAspect = if roleName == "default" then i.aspect else _: {};
+      aspect' = i.aspect.${roleName} or defAspect;
+      aspect = instanceEntity aspect' {
+        clan-instance = i;
+        inherit instanceName roleName serviceName instance;
+      };
+    in {
+      description = lib.mkDefault (aspect.description or "");
+      interface = {
+        imports = interfaceModule.imports;
+      };
+      perInstance = { settings, mkExports, machine, ... }: let
+        fAspect = instanceEntity aspect { inherit settings machine mkExports; machineName = machine.name; };
+        darwinModule = flatModule (aspects.resolve "darwin" fAspect);
+        nixosModule = flatModule (aspects.resolve "nixos" fAspect);
+      in {
+        inherit nixosModule darwinModule;
+      };
+    }) i.roles;
   };
 
-  r = builtins.foldl' (a: c: let
-    mod = genModule instances.${c};
-  in lib.recursiveUpdate a ({
-    instances.${c} = {
-      roles = instances.${c}.roles;
-      module = mod.metaModule;
+  r = deepMergeList (map (instanceName: let
+    i = config.clan.inventory.instances.${instanceName};
+  in {
+    instances.${instanceName} = {
+      module.name = instanceName;
+      module.input = "self";
+      roles = i.roles;
     };
-  } // lib.optionalAttrs (mod ? module) {
-    modules.${c} = mod.module;
-  })) {} (builtins.attrNames instances);
+    modules.${instanceName} = constructModule instanceName i;
+  }) (builtins.attrNames config.clan.inventory.instances));
 
   fleet = {
-    modules = r.modules or {};
     self = inputs.self;
-    directory = den.clan.directory;
-    meta = den.clan.meta;
-    exportInterfaces = den.clan.exportInterfaces;
+    directory = config.clan.directory;
+    meta = config.clan.meta;
+    modules = r.modules or {};
+    exportInterfaces = config.clan.exportInterfaces;
     inventory = {
-      instances = r.instances;
-      machines = builtins.mapAttrs (_: v: { inherit (v) deploy machineClass tags; }) den.clan.inventory.machines;
+      instances = r.instances or {};
+      machines = builtins.mapAttrs (_: v: { inherit (v) deploy machineClass tags; }) config.clan.inventory.machines;
     };
-    machines = builtins.mapAttrs (_: v: aspects.resolve "nixos" v.resolved) den.clan.inventory.machines;
+    machines = builtins.mapAttrs (_: v: aspects.resolve "nixos" v.resolved) config.clan.inventory.machines;
   };
-
-  b = clan fleet;
+  b = inputs.clan-core.lib.clan fleet;
 in {
-  den.schema.host.includes = [
-    aspectExtraModules
+  den.schema.flake.includes = [
+    {
+      flake.flake = rec {
+        clan = b.config;
+        clanInternals = clan.clanInternals;
+        _clan = b;
+        _fleet = fleet;
+      };
+    }
   ];
-  flake = {
-    clan = b.config;
-    clanInternals = b.config.clanInternals;
-  } // lib.optionalAttrs debug {
-    _clan = b;
-    fleet = fleet;
-    genModule = genModule;
-  };
 }

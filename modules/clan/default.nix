@@ -1,28 +1,39 @@
-{ den, lib, inputs, ... }: let
+{ lib, inputs, config, ... }: let
   namespace = "fclan";
 in {
   imports = [
     (inputs.den.namespace namespace true)
   ];
-  den.clan = {
+  clan = {
 
     # Useful when i just imported the modules without the full flake
     directory = builtins.toPath ../..;
 
     meta.name = namespace;
     meta.domain = "clan.fmway.me";
-    namespace = den.clan.meta.name;
+    namespace = config.clan.meta.name;
 
     inventory.machines = {
+      /*
+        # TAGS
+        - `online` -> the devices expected as a server
+        - `local` -> local machines, the opposite of `online` (laptop/pc/etc)
+        - `network-controller` -> the global server to routing all devices (zerotier, dns, etc)
+      */
       opc1.tags = [ "network-controller" "online" ];
       t480.tags = [ "local" ];
     };
 
     inventory.instances = {
       zerotier = {
+        module.name = "zerotier";
         roles.controller = {
-          settings.extraDevices = {
-            xiao = ["fd15:a6cd:10e3:f0e0:4099:937e:ac9:5c2c"];
+          settings = {
+            extraDevices = {
+              xiao = ["fd15:a6cd:10e3:f0e0:4099:937e:ac9:5c2c"];
+            };
+            dns.enable = true;
+            dns.serverName = "dns.fmway.me";
           };
           tags.network-controller = { };
         };
@@ -71,9 +82,8 @@ in {
         };
       };
 
-      extras.roles.default.tags.online = {};
-      firewall.roles.default.tags.nixos = {};
       vaultwarden.roles.default.machines.opc1 = {};
+      extras.roles.default.tags.online = {};
 
       nix-token = {
         roles.default.tags.all = {};
@@ -87,22 +97,10 @@ in {
     };
   };
 
-  fclan.zerotier.includes = [
-    ({ role, settings, ... }: lib.optionalAttrs (role == "controller") {
-      nixos =
-      { config, pkgs, ... }: let
-        networkId = config.clan.core.vars.generators."zerotier-network-zerotier".files.network-id.value;
-        dns = builtins.toJSON { domain = "dns.fmway.me"; servers = [ config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value ]; };
-      in {
-        systemd.services.zerotierone.serviceConfig.ExecStartPre = lib.mkAfter [
-          "+${pkgs.writeShellScript "custom-dns" ''
-            TARGET="/var/lib/zerotier-one/controller.d/network/${networkId}.json"
-            OLD="$(realpath "$TARGET")"
-            unlink "$TARGET"
-            ${lib.getExe pkgs.jq} '.dns = ${dns}' < "$OLD" > "$TARGET"
-          ''}"
-        ];
-      };
+  den.schema.clan-machine.includes = [
+    ({ clan-machine, ... }: lib.optionalAttrs (builtins.elem "local" clan-machine.tags) {
+      nixos.clan.core.deployment.requireExplicitUpdate = true;
+      nixos.clan.core.settings.state-version.enable = false;
     })
   ];
 
