@@ -2,6 +2,7 @@
 {
   programs.starship.enable = true;
   environment.systemPackages = with pkgs; [
+    yq
     git
     wget
     curl
