@@ -1,4 +1,4 @@
-{ settings, peerMaps, lib, myLib, ... }:
+{ settings, peerMaps, lib, myLib, machine, ... }:
 { config, pkgs, ... }: let
   cfg = config.services.adguardhome;
 in {
@@ -31,7 +31,7 @@ in {
         trusted_proxies = [
           "127.0.0.0/8"
           "::1/128"
-          (myLib.subnet config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value)
+          (myLib.subnet config.clan.core.vars.generators."zerotier-ip-${machine.name}-zerotier".files.ip.value)
         ];
       };
 

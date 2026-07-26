@@ -23,10 +23,10 @@
 
   instanceEntity = include: args: let r = resolveEntity "clan-instance" args; in r // { includes = r.includes ++ [ include ]; };
 
-  normalizeInstance = instance: builtins.mapAttrs (_: role: {
-    settings = role.finalSettings.config;
+  normalizeInstance = name: instance: builtins.mapAttrs (name: role: {
+    name = name; roleName = name; settings = role.finalSettings.config;
     machines = builtins.mapAttrs (_: machine: machine.finalSettings.config) role.machines;
-  }) instance.roles;
+  }) instance.roles // { name = name; instanceName = name; };
 
   constructModule = instanceName: i: let
     moduleInput = if isNull i.module.input then "clan-core" else i.module.input;
@@ -35,7 +35,7 @@
   in
   { config, ... }: let
     serviceName = config.manifest.name;
-    instance = normalizeInstance config.instances.${instanceName};
+    instance = normalizeInstance instanceName config.instances.${instanceName};
   in
   {
     _module.args = { inherit serviceName instance instanceName; };

@@ -29,24 +29,18 @@
         config.allowedIps = builtins.concatLists (lib.attrValues config.extraDevices);
       };
 
-      nixos = { settings, pkgs, config, ... }: let
-        networkId = config.clan.core.vars.generators."zerotier-network-zerotier".files.network-id.value;
-        ip = config.clan.core.vars.generators.zerotier-ip-zerotier.files.ip.value;
-        dns = builtins.toJSON { domain = settings.dns.serverName; servers = [ ip ]; };
+      nixos = { settings, pkgs, config, machine, ... }: let
+        ip = config.clan.core.vars.generators."zerotier-ip-${machine.name}-${instance.name}".files.ip.value;
       in {
         config = lib.mkMerge [
           {
-          networking.hosts."${ip}" = [ "dyndns.clan" ]; # should be in dyndns
+            networking.hosts."${ip}" = [ "dyndns.clan" ]; # should be in dyndns
           }
           (lib.mkIf settings.dns.enable {
-            systemd.services.zerotierone.serviceConfig.ExecStartPre = lib.mkAfter [
-              "+${pkgs.writeShellScript "custom-dns" ''
-                TARGET="/var/lib/zerotier-one/controller.d/network/${networkId}.json"
-                OLD="$(realpath "$TARGET")"
-                unlink "$TARGET"
-                ${lib.getExe pkgs.jq} '.dns = ${dns}' < "$OLD" > "$TARGET"
-              ''}"
-            ];
+            clan.core.zerotier.networks.${instance.name}.settings.dns = {
+              domain = settings.dns.serverName;
+              servers = [ ip ];
+            };
           })
         ];
       };
