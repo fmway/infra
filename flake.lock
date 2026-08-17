@@ -131,7 +131,40 @@
         "type": "github"
       }
     },
+    "fmway-garden": {
+      "inputs": {
+        "import-tree": "import-tree"
+      },
+      "locked": {
+        "lastModified": 1786968641,
+        "narHash": "sha256-mNZtc37vbpbaAh5i05am5AlVjcqmDgGCXTxlbL8WkHo=",
+        "owner": "fmway",
+        "repo": "garden",
+        "rev": "52b48bd658946e6e367d64f1c76e6700bdbfbabe",
+        "type": "github"
+      },
+      "original": {
+        "owner": "fmway",
+        "repo": "garden",
+        "type": "github"
+      }
+    },
     "import-tree": {
+      "locked": {
+        "lastModified": 1784254960,
+        "narHash": "sha256-iI88R3wHz8wTKQb5orvpc51L/Xr64AJyxid/0MKa/b8=",
+        "owner": "denful",
+        "repo": "import-tree",
+        "rev": "4ebb10ae17d5f1ad366e7aef5b92cb8eecf24f69",
+        "type": "github"
+      },
+      "original": {
+        "owner": "denful",
+        "repo": "import-tree",
+        "type": "github"
+      }
+    },
+    "import-tree_2": {
       "locked": {
         "lastModified": 1778781969,
         "narHash": "sha256-Jjuz5CmSkur8KvLDoGa+vylEp+RkQtv4mt/qcMznpH0=",
@@ -198,7 +231,8 @@
         "clan-core": "clan-core",
         "den": "den",
         "flake-parts": "flake-parts_2",
-        "import-tree": "import-tree",
+        "fmway-garden": "fmway-garden",
+        "import-tree": "import-tree_2",
         "nixpkgs": "nixpkgs"
       }
     },

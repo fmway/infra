@@ -3,6 +3,7 @@
   ({ den, config, lib, fclan, ... }: {
     imports = [
       inputs.den.flakeModule
+      inputs.fmway-garden.flakeModules.clan
       (inputs.import-tree ./modules)
     ];
 
@@ -47,6 +48,7 @@
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
+    fmway-garden.url = "github:fmway/garden";
     import-tree.url = "github:denful/import-tree";
     nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz";
   };
